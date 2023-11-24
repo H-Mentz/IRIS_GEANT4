@@ -1,0 +1,354 @@
+// NO STEEL FOR BACKSCATTERING
+// ALSO NO MEDIUM B/N SRC AND DET
+
+/// \file B1/src/DetectorConstruction.cc
+/// \brief Implementation of the B1::DetectorConstruction class
+
+#include "DetectorConstruction.hh"
+#include "G4RunManager.hh"
+#include "G4NistManager.hh"
+#include "G4Box.hh"
+//#include "G4Cons.hh"
+#include "G4Orb.hh"
+#include "G4Sphere.hh"
+//#include "G4Trd.hh"
+#include "G4Element.hh"
+#include "G4Material.hh"
+#include "G4UnitsTable.hh" 
+#include "G4LogicalVolume.hh"
+#include "G4PVPlacement.hh"
+#include "G4SystemOfUnits.hh"
+#include "G4SubtractionSolid.hh"
+#include "G4VisAttributes.hh"
+
+namespace B1
+{
+
+//....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
+
+G4VPhysicalVolume* DetectorConstruction::Construct()
+{
+  // Get nist material manager
+  G4NistManager* nist = G4NistManager::Instance();
+
+  // Envelope parameters
+  //
+  G4double env_sizeXY = 30*cm, env_sizeZ = 40*cm;
+  G4Material* env_mat = nist->FindOrBuildMaterial("G4_AIR");
+
+  // Option to switch on/off checking of volumes overlaps
+  //
+  G4bool checkOverlaps = true;
+  
+  // 
+  // World
+  //
+  G4double world_sizeXY = 1.2*env_sizeXY;
+  G4double world_sizeZ  = 1.2*env_sizeZ;
+  G4Material* world_mat = nist->FindOrBuildMaterial("G4_AIR");
+  
+
+  auto solidWorld = new G4Box("World",                           // its name
+    0.5 * world_sizeXY, 0.5 * world_sizeXY, 0.5 * world_sizeZ);  // its size
+
+  auto logicWorld = new G4LogicalVolume(solidWorld,  // its solid
+    world_mat,                                       // its material
+    "World");                                        // its name
+
+  auto physWorld = new G4PVPlacement(nullptr,  // no rotation
+    G4ThreeVector(),                           // at (0,0,0)
+    logicWorld,                                // its logical volume
+    "World",                                   // its name
+    nullptr,                                   // its mother  volume
+    false,                                     // no boolean operation
+    0,                                         // copy number
+    checkOverlaps);                            // overlaps checking
+
+  //
+  // Envelope
+  //
+  
+  auto solidEnv = new G4Box("Envelope",                    // its name
+    0.5 * env_sizeXY, 0.5 * env_sizeXY, 0.5 * env_sizeZ);  // its size
+
+  auto logicEnv = new G4LogicalVolume(solidEnv,  // its solid
+    env_mat,                                     // its material
+    "Envelope");                                 // its name
+
+  new G4PVPlacement(nullptr,  // no rotation
+    G4ThreeVector(),          // at (0,0,0)
+    logicEnv,                 // its logical volume
+    "Envelope",               // its name
+    logicWorld,               // its mother  volume
+    false,                    // no boolean operation
+    0,                        // copy number
+    checkOverlaps);           // overlaps checking
+
+
+
+  //
+  // Shape 1: Aluminum Box Instrument Enclosure
+  //
+  //
+  // NOTE: See the engineering schematics listed on the polycase website for AL-75P Diecast Aluminum Enclosure
+  //
+  
+  //Dimensions of Outer Box:
+  // outer_box_px = 12.1 cm
+  // outer_box_py = 12.1 cm
+  // outer_box_pz = 9.5 cm
+  
+  //Relvant thicknesses: 
+  //NOTE: we are flipping it so that the usual bottom is the new lid
+  //WRONG: Base (previously known as the lid) thickness: 0.221’’ = 0.56134 cm 
+  //Base thickness (checked with manufacturer) = 0.078" = 0.19812 cm
+  //Top thickness: 0.078’’ = 0.19812 cm
+  //Wall thickness (sides): 0.094’’ =  0.23876 cm (x4 sides)
+ 
+  //Dimensions of inner box: 
+  //px_in = [outer_box_px] - 2[Wall thickness] = 12.1cm - (2*0.23876cm) = 11.62248 cm 
+  //Wrong: py_in = [outer_box_py] - [Top thickness + Base thickness] = 12.1cm - (0.19812cm + 0.56134cm) = 11.34054 cm
+  //py_in = [outer_box_py] - [Top thickness + Base thickness] = 12.1cm - 2(0.19812cm) = 11.70376 cm
+  //pz_in = [outer+box_pz] - 2[Wall thickness] = 9.5cm - 2(0.23876cm) = 9.02248 cm
+
+  
+  
+  G4Material* Enclosure_mat = nist->FindOrBuildMaterial("G4_Al");
+  G4ThreeVector pos1 = G4ThreeVector(0, 0, 0);
+
+  //G4double outer_box_hx = 12.1/2.0 * cm; 
+  //G4double outer_box_hy = 12.1/2.0 * cm;
+  //G4double outer_box_hz = 9.5/2.0 * cm;  
+  
+  G4double outer_box_hx = 24.2/2.0 * cm; 
+  G4double outer_box_hy = 24.2/2.0 * cm;
+  G4double outer_box_hz = 19./2.0 * cm;  
+
+  //G4double inner_box_hx = 11.6/2.0 * cm;
+  //G4double inner_box_hy = 11.7/2.0 * cm;
+  //G4double inner_box_hz = 9.0/2.0 * cm;
+  
+  G4double inner_box_hx = 23.2/2.0 * cm;
+  G4double inner_box_hy = 23.4/2.0 * cm;
+  G4double inner_box_hz = 18./2.0 * cm;
+
+  G4Box* Outer_Box
+    = new G4Box("Outer_Box",
+                outer_box_hx,
+                outer_box_hy,
+                outer_box_hz);
+
+  G4Box* Inner_Box
+    = new G4Box("Inner_box",
+                inner_box_hx,
+                inner_box_hy,
+                inner_box_hz);
+                
+  G4SubtractionSolid *solidBox = 
+		new G4SubtractionSolid("Enclosure", Outer_Box, Inner_Box);
+		
+  G4LogicalVolume* logicBox =
+      new G4LogicalVolume(solidBox,   //its solid
+                          Enclosure_mat,    //its material
+                          "Enclosure");     //its name
+                          
+ 
+  new G4PVPlacement(nullptr,  // no rotation
+    pos1,                     // at position
+    logicBox,              // its logical volume
+    "Enclosure",                 // its name
+    logicEnv,                 // its mother  volume
+    false,                    // no boolean operation
+    0,                        // copy number
+    checkOverlaps);           // overlaps checkingG4Material
+    
+ 
+  //
+  // Shape 2 : LYSO Crystal 
+  //
+  
+  // Material definitions of Lutetium–yttrium oxyorthosilicate (LYSO) components
+  G4double z, a, density;
+  G4String name, symbol;
+  G4int ncomponents, natoms; 
+  G4double abundance, fractionmass;
+  G4double temperature, pressure;
+
+  a = 174.97*g/mole;
+  G4Element* elLu = new G4Element(name="Lutetium", symbol="Lu", z=71., a);
+
+  a = 88.91*g/mole;
+  G4Element* elY  = new G4Element(name="Yttrium",symbol="Y",z=39.,a);
+
+  a = 28.09*g/mole;
+  G4Element* elSi  = new G4Element("Silicon","Si",z=14.,a);
+
+  a  = 16.00*g/mole;
+  G4Element* elO   =  new G4Element("Oxygen","O",z=8.,a);
+
+  // Lu2(1-x), if x = 0.075, then Lu(1.85)
+  // Y2(.075), if x = 0.075, then Y(0.15)
+  // Si = 1
+  // O5 = 5 
+  // The total molar mass is: (1.85*174.97) + (0.15*88.91) + (28.09) + (5*16) = 445.121 g/mol 
+  // Then the fracmass of Lu IS: (1.85 * 174.97)/(445.121) = 0.7272 => 73%
+  // SIMILARLY FOR % Y: (0.15 * 88.91)/(445.121) = 0.0299 => 3%
+  // SIMILARLY FOR % Si: (28.09)/(445.121) = 0.063 => 6%
+  // SIMILARLY FOR % 0: (80)/(445.121)= 0.1797 => 18%
+  // CHECK: 73 + 3 + 6 + 18 = 100
+
+
+  density = 7.16*g/cm3 ;
+  G4Material* lyso = new G4Material(name="Lyso",density,ncomponents=4);
+  lyso->AddElement(elLu, fractionmass=73.*perCent);
+  lyso->AddElement(elY, fractionmass=3.*perCent);
+  lyso->AddElement(elSi, fractionmass=6.*perCent);
+  lyso->AddElement(elO, fractionmass=18.*perCent);
+  
+  G4Material *lyso_mat = lyso;
+  G4Material* shape2_mat = nist->FindOrBuildMaterial("Lyso");
+  G4ThreeVector pos2 = G4ThreeVector(0, 0, 0);
+  //G4ThreeVector pos2 = G4ThreeVector(0, -1*cm, 7*cm);
+
+  
+  //DIMENSIONS OF LYSO CRYSTAL: 4x4x22mm = 0.40 cm x 0.40 cm x 2.2 cm
+  //G4double lyso_hx = .4/2.0 * cm; 
+  //G4double lyso_hy = .4/2.0 * cm;
+  //G4double lyso_hz = 2.2/2.0 * cm; 
+  
+  G4double lyso_hx = .8/2.0 * cm; 
+  G4double lyso_hy = .8/2.0 * cm;
+  G4double lyso_hz = 4.4/2.0 * cm; 
+ 
+
+  auto solidShape2 = new G4Box("Crystal", lyso_hx, lyso_hy, lyso_hz); 
+
+  auto logicShape2 = new G4LogicalVolume(solidShape2,  // its solid
+    shape2_mat,                                        // its material
+    "Crystal");                                         // its name
+
+  new G4PVPlacement(nullptr,  // no rotation
+    pos2,                     // at position
+    logicShape2,              // its logical volume
+    "Crystal",                 // its name
+    logicEnv,                 // its mother  volume
+    false,                    // no boolean operation
+    0,                        // copy number
+    checkOverlaps);           // overlaps checkingG4Material
+    
+  fScoringVolume = logicShape2;
+  
+
+
+  //
+  //Shape 3: PLastic Scintillator Cover
+  //
+  
+  G4Material *Plcov_mat
+    = nist->FindOrBuildMaterial("G4_PLASTIC_SC_VINYLTOLUENE");
+  G4ThreeVector pos3 = G4ThreeVector(0, 0, 0);
+
+  G4double Plcov_outer_hx = .9/2.0 * cm; 
+  G4double Plcov_outer_hy = .9/2.0 * cm;
+  G4double Plcov_outer_hz = 5.0/2.0 * cm; 
+  
+  G4double Plcov_inner_hx = .85/2.0 * cm;
+  G4double Plcov_inner_hy = .85/2.0 * cm;
+  G4double Plcov_inner_hz = 4.5/2.0 * cm;
+
+  G4Box* Outer_Plcov
+    = new G4Box("Outer_Plcov",
+                Plcov_outer_hx,
+                Plcov_outer_hy,
+                Plcov_outer_hz);
+
+  G4Box* Inner_Plcov
+    = new G4Box("Inner_Plcov",
+                Plcov_inner_hx,
+                Plcov_inner_hy,
+                Plcov_inner_hz);
+                
+  G4SubtractionSolid *solidCov = 
+		new G4SubtractionSolid("Shape3", Outer_Plcov, Inner_Plcov);
+		
+  G4LogicalVolume* logicCov =
+      new G4LogicalVolume(solidCov,   //its solid
+                          Plcov_mat,    //its material
+                          "Shape3");     //its name
+                          
+ 
+  new G4PVPlacement(nullptr,  // no rotation
+    pos3,                     // at position
+    logicCov,              // its logical volume
+    "Shape3",                 // its name
+    logicEnv,                 // its mother  volume
+    false,                    // no boolean operation
+    0,                        // copy number
+    checkOverlaps);           // overlaps checkingG4Material
+    
+
+ 
+  //
+  // Shape 4: Scintillation Medium (AKA WALL OF WATER)
+  //
+
+   G4Material *Scint_med_mat
+    = nist->FindOrBuildMaterial("G4_WATER");
+  G4ThreeVector pos4 = G4ThreeVector(0, 0, 5);
+
+  G4double Scint_med_outer_hx = 10.0/2.0 * cm; 
+  G4double Scint_med_outer_hy = 10.0/2.0 * cm;
+  G4double Scint_med_outer_hz = 20.0/2.0 * cm; 
+  
+  G4double Scint_med_inner_hx = 8.0/2.0 * cm;
+  G4double Scint_med_inner_hy = 8.0/2.0 * cm;
+  G4double Scint_med_inner_hz = 18.0/2.0 * cm;
+
+  G4Box* Outer_Scint_med
+    = new G4Box("Outer_Scint_med",
+                Scint_med_outer_hx,
+                Scint_med_outer_hy,
+                Scint_med_outer_hz);
+
+  G4Box* Inner_Scint_med
+    = new G4Box("Inner_Scint_med",
+                Scint_med_inner_hx,
+                Scint_med_inner_hy,
+                Scint_med_inner_hz);
+                
+  G4SubtractionSolid *ScintMed = 
+		new G4SubtractionSolid("Shape4", Outer_Scint_med, Inner_Scint_med);
+		
+  G4LogicalVolume* Wall_of_Water =
+      new G4LogicalVolume(ScintMed,   //its solid
+                          Scint_med_mat,    //its material
+                          "Shape4");     //its name
+                          
+ 
+  new G4PVPlacement(nullptr,  // no rotation
+    pos4,                     // at position
+    logicCov,              // its logical volume
+    "Shape4",                 // its name
+    logicEnv,                 // its mother  volume
+    false,                    // no boolean operation
+    0,                        // copy number
+    checkOverlaps);           // overlaps checkingG4Material
+    
+ 
+ 
+
+  //Visual attributes
+  logicWorld->  SetVisAttributes(G4VisAttributes::GetInvisible()); 
+  logicEnv->  SetVisAttributes(G4VisAttributes::GetInvisible());
+
+
+
+  //
+  //always return the physical World
+  //
+  return physWorld;
+}
+
+//....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
+
+}
